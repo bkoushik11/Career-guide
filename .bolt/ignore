@@ -1,0 +1,12 @@
+node_modules/*
+supabase/migrations/*
+src/assets/*
+src/pages/large-static/*
+dist/*
+.vite/*
+test/*
+public/*
+*.map
+*.lock
+*.log
+.env
