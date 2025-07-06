@@ -114,12 +114,6 @@ export default function Landing() {
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 text-center">
           <div className={`transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            {/* Badge */}
-            <div className="inline-flex items-center px-6 py-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-8 animate-glow">
-              <Sparkles className="h-5 w-5 text-cyan-400 mr-2 animate-pulse" />
-              <span className="text-cyan-400 font-medium">AI-Powered Career Platform</span>
-            </div>
-
             {/* Main Headline */}
             <h1 className="text-6xl md:text-8xl font-bold text-white leading-tight mb-8">
               Build Smarter{' '}
