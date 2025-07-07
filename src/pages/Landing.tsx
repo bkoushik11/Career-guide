@@ -90,8 +90,6 @@ export default function Landing() {
     }
   ]
 
-
-
   return (
     <div className="min-h-screen overflow-x-hidden">
       {/* Hero Section */}
@@ -364,20 +362,6 @@ export default function Landing() {
                 Get Started for Free
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="border-2 border-white text-white hover:bg-white/10 px-8 py-4 text-lg font-semibold rounded-xl backdrop-blur-sm">
-              <Link to="/templates">
-                <Sparkles className="h-6 w-6 mr-2" />
-                View Templates
-              </Link>
-            </Button>
-          </div>
-
-          {/* Free Forever Badge */}
-          <div className="mt-4 md:mt-8">
-            <Badge className="bg-green-500 text-white px-6 py-2 text-lg">
-              <CheckCircle className="h-5 w-5 mr-2" />
-              Free Forever Plan Available
-            </Badge>
           </div>
         </div>
       </section>
