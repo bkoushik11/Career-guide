@@ -4,11 +4,12 @@ import { ChevronLeft, ChevronRight, Save, Download, Eye, Check, FileText, Palett
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { useResumeStore } from '@/store/resumeStore'
 import { useAuthStore } from '@/store/authStore'
 import { ExportService } from '@/services/exportService'
+import AIChat from '@/components/ui/AIChat'
 import PersonalInfoStep from './steps/PersonalInfoStep'
 import SummaryStep from './steps/SummaryStep'
 import ExperienceStep from './steps/ExperienceStep'
@@ -18,17 +19,17 @@ import SkillsStep from './steps/SkillsStep'
 import CertificationsStep from './steps/CertificationsStep'
 import ResumePreview from './ResumePreview'
 import TemplateSelector from './TemplateSelector'
-// @ts-ignore: No types for html2pdf.js
-import html2pdf from 'html2pdf.js'
+import BackButton from '@/components/ui/BackButton'
+import { useMediaQuery } from 'react-responsive'
 
 const steps = [
   { id: 'personal', title: 'Personal Info', component: PersonalInfoStep },
-  { id: 'summary', title: 'Summary', component: SummaryStep },
   { id: 'experience', title: 'Experience', component: ExperienceStep },
   { id: 'education', title: 'Education', component: EducationStep },
   { id: 'projects', title: 'Projects', component: ProjectsStep },
   { id: 'skills', title: 'Skills', component: SkillsStep },
   { id: 'certifications', title: 'Certifications', component: CertificationsStep },
+  { id: 'summary', title: 'Summary', component: SummaryStep },
 ]
 
 export default function ResumeBuilder() {
@@ -42,6 +43,7 @@ export default function ResumeBuilder() {
   const { currentResume, saveResume, templates, autoSaving, updateCurrentResume, incrementDownloadCount } = useResumeStore()
   const { user } = useAuthStore()
   const navigate = useNavigate()
+  const isMobile = useMediaQuery({ maxWidth: 767 })
 
   useEffect(() => {
     if (!currentResume || !user) {
@@ -139,6 +141,24 @@ export default function ResumeBuilder() {
     );
   };
 
+  const isEducationComplete = () => {
+    // Access validation function from EducationStep
+    if (currentStep === 2 && (window as any).isEducationStepComplete) { // Education step is index 2
+      return (window as any).isEducationStepComplete();
+    }
+    return currentResume.education && currentResume.education.length > 0;
+  };
+
+  const isSkillsComplete = () => {
+    return currentResume.skills && currentResume.skills.length >= 1;
+  };
+
+  const isSummaryComplete = () => {
+    return currentResume.summary && currentResume.summary.length > 0;
+  };
+
+  const canExport = isPersonalInfoComplete() && isEducationComplete() && isSkillsComplete() && isSummaryComplete();
+
   const handleExport = async (format: 'pdf' | 'docx' | 'txt' | 'html') => {
     setExportError(null);
     if (!isPersonalInfoComplete()) {
@@ -151,13 +171,10 @@ export default function ResumeBuilder() {
       let filename: string;
 
       if (format === 'pdf') {
-        // Use html2pdf.js for PDF export
-        const element = document.getElementById('resume-preview');
-        if (element) {
-          await html2pdf().from(element).save(`${currentResume.title || 'resume'}.pdf`);
-        } else {
-          setExportError('Could not find resume preview for export.');
-        }
+        // Use jsPDF method directly - more reliable than html2pdf
+        blob = await ExportService.exportToPDF(currentResume, currentResume.template_id);
+        filename = `${currentResume.title || 'resume'}.pdf`;
+        await ExportService.downloadFile(blob, filename);
         setExporting(false);
         return;
       }
@@ -200,6 +217,7 @@ export default function ResumeBuilder() {
   if (showTemplateSelector) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
+        <div className="hidden md:block"><BackButton /></div>
         <div className="max-w-7xl mx-auto px-4 py-8">
           <TemplateSelector
             onTemplateSelect={handleTemplateSelect}
@@ -211,9 +229,134 @@ export default function ResumeBuilder() {
     )
   }
 
+  // Show full-screen preview when showPreview is true
+  if (showPreview) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden pt-16 md:pt-20">
+        <div className="max-w-full mx-auto py-4 px-2">
+          {/* Preview Header */}
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowPreview(false)}
+                className="hidden md:flex"
+              >
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Back to Editor
+              </Button>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Resume Preview
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">
+                {currentTemplate?.name || 'Unknown Template'}
+              </Badge>
+              <Button variant="outline" onClick={handleSave} disabled={saving}>
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? 'Saving...' : 'Save'}
+              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button disabled={exporting || !canExport} title={!canExport ? 'Complete Personal Info, Education, Skills, and Summary to export.' : undefined}>
+                    <Download className="h-4 w-4 mr-2" />
+                    {exporting ? 'Exporting...' : 'Export'}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Export Resume</DialogTitle>
+                    <DialogDescription>Choose a format to export your resume.</DialogDescription>
+                  </DialogHeader>
+                  {!canExport ? (
+                    <div className="text-red-600 text-sm mb-4">Please complete Personal Info, Education, Skills, and Summary before exporting your resume.</div>
+                  ) : null}
+                  <div>
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => handleExport('pdf')}
+                        disabled={exporting || !canExport}
+                        className="h-20 flex flex-col"
+                      >
+                        <FileText className="h-6 w-6 mb-2" />
+                        PDF
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => handleExport('docx')}
+                        disabled={exporting || !canExport}
+                        className="h-20 flex flex-col"
+                      >
+                        <FileText className="h-6 w-6 mb-2" />
+                        Word
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => handleExport('html')}
+                        disabled={exporting || !canExport}
+                        className="h-20 flex flex-col"
+                      >
+                        <FileText className="h-6 w-6 mb-2" />
+                        HTML
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => handleExport('txt')}
+                        disabled={exporting || !canExport}
+                        className="h-20 flex flex-col"
+                      >
+                        <FileText className="h-6 w-6 mb-2" />
+                        Text
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+          
+          {/* Preview Content */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
+            {exportError && (
+              <div className="mb-4 p-3 bg-red-100 text-red-800 rounded border border-red-300">
+                {exportError}
+              </div>
+            )}
+            <div className="border rounded-lg overflow-hidden max-h-[800px] overflow-y-auto">
+              <ResumePreview 
+                template={currentResume.template_id as any}
+                resumeData={currentResume}
+                templateConfig={currentTemplate?.config}
+                isMobile={isMobile}
+              />
+            </div>
+          </div>
+          
+          {/* Mobile Back Button */}
+          <div className="md:hidden mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowPreview(false)}
+              className="w-full"
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Back to Editor
+            </Button>
+          </div>
+        </div>
+        
+        {/* AIChat with Chatbase hidden in preview mode */}
+        <AIChat hideChatbase={true} />
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden pt-16 md:pt-20">
+      <div className="hidden md:block"><BackButton /></div>
+      <div className="max-w-full md:max-w-5xl mx-auto py-8 md:py-12 px-2 md:px-4">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -237,27 +380,23 @@ export default function ResumeBuilder() {
               </div>
             </div>
           </div>
-          <div className="flex space-x-2">
-            {/* Template Selector Button */}
+          {/* Action Buttons: Desktop in header, mobile below form */}
+          <div className="hidden md:flex space-x-2">
             <Button variant="outline" onClick={() => setShowTemplateSelector(true)}>
               <Palette className="h-4 w-4 mr-2" />
               Templates ({templates.length})
             </Button>
-
-            <Button variant="outline" onClick={() => setShowPreview(!showPreview)}>
+            <Button variant="outline" onClick={() => setShowPreview(true)}>
               <Eye className="h-4 w-4 mr-2" />
-              {showPreview ? 'Hide Preview' : 'Show Preview'}
+              Show Preview
             </Button>
-
             <Button variant="outline" onClick={handleSave} disabled={saving}>
               <Save className="h-4 w-4 mr-2" />
               {saving ? 'Saving...' : 'Save'}
             </Button>
-
-            {/* Export Dropdown */}
             <Dialog>
               <DialogTrigger asChild>
-                <Button disabled={exporting}>
+                <Button disabled={exporting || !canExport} title={!canExport ? 'Complete Personal Info, Education, Skills, and Summary to export.' : undefined}>
                   <Download className="h-4 w-4 mr-2" />
                   {exporting ? 'Exporting...' : 'Export'}
                 </Button>
@@ -265,52 +404,58 @@ export default function ResumeBuilder() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Export Resume</DialogTitle>
+                  <DialogDescription>Choose a format to export your resume.</DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleExport('pdf')}
-                    disabled={exporting}
-                    className="h-20 flex flex-col"
-                  >
-                    <FileText className="h-6 w-6 mb-2" />
-                    PDF
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleExport('docx')}
-                    disabled={exporting}
-                    className="h-20 flex flex-col"
-                  >
-                    <FileText className="h-6 w-6 mb-2" />
-                    Word
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleExport('html')}
-                    disabled={exporting}
-                    className="h-20 flex flex-col"
-                  >
-                    <FileText className="h-6 w-6 mb-2" />
-                    HTML
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleExport('txt')}
-                    disabled={exporting}
-                    className="h-20 flex flex-col"
-                  >
-                    <FileText className="h-6 w-6 mb-2" />
-                    Text
-                  </Button>
+                {!canExport ? (
+                  <div className="text-red-600 text-sm mb-4">Please complete Personal Info, Education, Skills, and Summary before exporting your resume.</div>
+                ) : null}
+                <div>
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleExport('pdf')}
+                      disabled={exporting || !canExport}
+                      className="h-20 flex flex-col"
+                    >
+                      <FileText className="h-6 w-6 mb-2" />
+                      PDF
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleExport('docx')}
+                      disabled={exporting || !canExport}
+                      className="h-20 flex flex-col"
+                    >
+                      <FileText className="h-6 w-6 mb-2" />
+                      Word
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleExport('html')}
+                      disabled={exporting || !canExport}
+                      className="h-20 flex flex-col"
+                    >
+                      <FileText className="h-6 w-6 mb-2" />
+                      HTML
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleExport('txt')}
+                      disabled={exporting || !canExport}
+                      className="h-20 flex flex-col"
+                    >
+                      <FileText className="h-6 w-6 mb-2" />
+                      Text
+                    </Button>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mb-8">
+        {/* Progress Bar (desktop only) */}
+        <div className="mb-8 hidden md:block">
           <div className="flex justify-between items-center mb-2">
             <Progress value={progress} className="h-2 flex-1 mr-4" />
             <div className="text-sm text-muted-foreground whitespace-nowrap">
@@ -353,107 +498,113 @@ export default function ResumeBuilder() {
         )}
 
         {/* Main Content */}
-        <div className={`grid ${showPreview ? 'grid-cols-2' : 'grid-cols-1'} gap-8`}>
-          {/* Form Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-            <CurrentStepComponent />
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+          <CurrentStepComponent />
+          
+          {/* Navigation Buttons */}
+          <div className="flex flex-col md:flex-row gap-2 md:gap-4 mt-4 md:mt-8 w-full">
+            <Button
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentStep === 0}
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Previous
+            </Button>
             
-            {/* Navigation Buttons */}
-            <div className="flex justify-between mt-8">
+            {isLastStep ? (
               <Button
-                variant="outline"
-                onClick={handlePrevious}
-                disabled={currentStep === 0}
+                onClick={handleFinish}
+                disabled={saving}
+                className="bg-green-600 hover:bg-green-700 text-white"
               >
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Previous
+                <Check className="h-4 w-4 mr-2" />
+                {saving ? 'Saving...' : 'Finish Resume'}
               </Button>
-              
-              {isLastStep ? (
-                <Button
-                  onClick={handleFinish}
-                  disabled={saving}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  {saving ? 'Saving...' : 'Finish Resume'}
-                </Button>
-              ) : (
-                <Button onClick={handleNext}>
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-2" />
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Preview Section (visible if showPreview) */}
-          {showPreview && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-              {exportError && (
-                <div className="mb-4 p-3 bg-red-100 text-red-800 rounded border border-red-300">
-                  {exportError}
-                </div>
-              )}
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold">Live Preview</h3>
-                  <Badge variant="outline">
-                    {currentTemplate?.name || 'Unknown Template'}
-                  </Badge>
-                </div>
-                <Tabs defaultValue="preview" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="preview">Preview</TabsTrigger>
-                    <TabsTrigger value="print">Print View</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="preview" className="mt-4">
-                    <div id="resume-preview" className="border rounded-lg overflow-hidden max-h-[800px] overflow-y-auto">
-                      <ResumePreview 
-                        template={currentResume.template_id as any}
-                        resumeData={currentResume}
-                        templateConfig={currentTemplate?.config}
-                      />
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="print" className="mt-4">
-                    <div className="border rounded-lg overflow-hidden max-h-[800px] overflow-y-auto bg-white">
-                      <div className="transform scale-75 origin-top-left">
-                        <ResumePreview 
-                          template={currentResume.template_id as any}
-                          resumeData={currentResume}
-                          templateConfig={currentTemplate?.config}
-                        />
-                      </div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
-            </div>
-          )}
-
-          {/* Always render hidden preview for export */}
-          <div
-            id="resume-preview"
-            style={{
-              position: 'absolute',
-              left: '-9999px',
-              top: 0,
-              width: '794px',
-              background: 'white',
-              zIndex: -1,
-              pointerEvents: 'none',
-              visibility: showPreview ? 'hidden' : 'visible',
-            }}
-            aria-hidden={showPreview ? 'true' : 'false'}
-          >
-            <ResumePreview 
-              template={currentResume.template_id as any}
-              resumeData={currentResume}
-              templateConfig={currentTemplate?.config}
-            />
+            ) : (
+              <Button 
+                onClick={handleNext}
+                disabled={currentStep === 2 && !isEducationComplete()} // Disable on education step if not complete
+                title={currentStep === 2 && !isEducationComplete() ? 'Please fill in Institution, Degree, and Field of Study for at least one education entry' : undefined}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* Mobile Action Buttons */}
+        <div className="flex flex-col gap-2 md:hidden mt-4">
+          <Button variant="outline" onClick={() => setShowPreview(true)} className="w-full">
+            <Eye className="h-4 w-4 mr-2" />
+            Show Preview
+          </Button>
+          <Button variant="outline" onClick={handleSave} disabled={saving} className="w-full">
+            <Save className="h-4 w-4 mr-2" />
+            {saving ? 'Saving...' : 'Save'}
+          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button disabled={exporting || !canExport} className="w-full" title={!canExport ? 'Complete Personal Info, Education, Skills, and Summary to export.' : undefined}>
+                <Download className="h-4 w-4 mr-2" />
+                {exporting ? 'Exporting...' : 'Export'}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Export Resume</DialogTitle>
+                <DialogDescription>Choose a format to export your resume.</DialogDescription>
+              </DialogHeader>
+              {!canExport ? (
+                <div className="text-red-600 text-sm mb-4">Please complete Personal Info, Education, Skills, and Summary before exporting your resume.</div>
+              ) : null}
+              <div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleExport('pdf')}
+                    disabled={exporting || !canExport}
+                    className="h-20 flex flex-col"
+                  >
+                    <FileText className="h-6 w-6 mb-2" />
+                    PDF
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleExport('docx')}
+                    disabled={exporting || !canExport}
+                    className="h-20 flex flex-col"
+                  >
+                    <FileText className="h-6 w-6 mb-2" />
+                    Word
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleExport('html')}
+                    disabled={exporting || !canExport}
+                    className="h-20 flex flex-col"
+                  >
+                    <FileText className="h-6 w-6 mb-2" />
+                    HTML
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleExport('txt')}
+                    disabled={exporting || !canExport}
+                    className="h-20 flex flex-col"
+                  >
+                    <FileText className="h-6 w-6 mb-2" />
+                    Text
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+        
+        {/* AIChat component */}
+        <AIChat />
       </div>
     </div>
   )

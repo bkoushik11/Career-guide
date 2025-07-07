@@ -2,12 +2,10 @@ import React from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useResumeStore } from '@/store/resumeStore'
 import { PersonalInfo } from '@/lib/supabase-types'
-import { Sparkles } from 'lucide-react'
 
 const personalInfoSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -39,19 +37,10 @@ export default function PersonalInfoStep() {
     updateCurrentResume({ personal_info: watchedValues })
   }, [watchedValues, updateCurrentResume])
 
-  const handleAISuggest = async () => {
-    // TODO: Implement AI suggestions
-    console.log('AI suggest for personal info')
-  }
-
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div>
         <h2 className="text-2xl font-semibold">Personal Information</h2>
-        <Button variant="outline" onClick={handleAISuggest}>
-          <Sparkles className="h-4 w-4 mr-2" />
-          AI Suggest
-        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

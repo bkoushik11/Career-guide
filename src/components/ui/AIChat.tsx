@@ -6,6 +6,10 @@ interface Message {
   content: string;
 }
 
+interface AIChatProps {
+  hideChatbase?: boolean;
+}
+
 // Load OpenAI API key from .env
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
@@ -17,7 +21,7 @@ declare global {
   }
 }
 
-const AIChat: React.FC = () => {
+const AIChat: React.FC<AIChatProps> = ({ hideChatbase = false }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,8 +33,17 @@ const AIChat: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Initialize Chatbase script
+  // Initialize Chatbase script only if not hidden
   useEffect(() => {
+    if (hideChatbase) {
+      // Remove existing Chatbase button if it exists
+      const existingButton = document.getElementById('chatbase-bubble-button');
+      if (existingButton) {
+        existingButton.remove();
+      }
+      return;
+    }
+
     if (!window.chatbase || window.chatbase('getState') !== 'initialized') {
       window.chatbase = (...args: any[]) => {
         if (!window.chatbase.q) window.chatbase.q = [];
@@ -48,7 +61,6 @@ const AIChat: React.FC = () => {
       const script = document.createElement('script');
       script.src = 'https://www.chatbase.co/embed.min.js';
       script.id = 'KIXVGMBQlmkw021AfZNWe';
-      script.domain = 'www.chatbase.co';
       document.body.appendChild(script);
     };
 
@@ -63,7 +75,7 @@ const AIChat: React.FC = () => {
       if (script) document.body.removeChild(script);
       window.removeEventListener('load', onLoad);
     };
-  }, []);
+  }, [hideChatbase]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -121,7 +133,7 @@ const AIChat: React.FC = () => {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="w-80 sm:w-96 bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col max-h-[80vh] mt-2">
+        <div className="w-80 sm:w-96 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[80vh] mt-2">
           {/* Header */}
           <div className="p-4 bg-blue-600 text-white rounded-t-lg flex justify-between items-center">
             <h3 className="font-semibold">CareerForge AI Assistant</h3>
@@ -135,9 +147,9 @@ const AIChat: React.FC = () => {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+          <div className="flex-1 p-4 overflow-y-auto bg-gray-50 dark:bg-gray-900">
             {messages.length === 0 && (
-              <div className="text-gray-500 text-center">
+              <div className="text-gray-500 dark:text-gray-400 text-center">
                 Ask me anything about your job search!
               </div>
             )}
@@ -148,19 +160,21 @@ const AIChat: React.FC = () => {
               >
                 <span
                   className={`inline-block max-w-[80%] p-3 rounded-lg ${
-                    msg.role === 'user' ? 'bg-blue-100 text-gray-800' : 'bg-gray-200 text-gray-800'
+                    msg.role === 'user' 
+                      ? 'bg-blue-100 dark:bg-blue-900 text-gray-800 dark:text-gray-200' 
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                   }`}
                 >
                   {msg.content}
                 </span>
               </div>
             ))}
-            {loading && <div className="text-gray-500 text-center">AI is typing...</div>}
+            {loading && <div className="text-gray-500 dark:text-gray-400 text-center">AI is typing...</div>}
             <div ref={messagesEndRef} />
           </div>
 
           {/* Input Area */}
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -168,14 +182,14 @@ const AIChat: React.FC = () => {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Type your message..."
-                className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                 disabled={loading}
                 aria-label="Chat input"
               />
               <button
                 onClick={sendMessage}
                 disabled={loading || !input.trim()}
-                className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+                className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 transition-colors"
               >
                 Send
               </button>

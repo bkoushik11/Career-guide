@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useResumeStore, createNewResume } from '@/store/resumeStore'
 import { ExportService } from '@/services/exportService'
 import AIChat from '../components/ui/AIChat'
+import BackButton from '@/components/ui/BackButton'
 
 export default function Dashboard() {
   const { user } = useAuthStore()
@@ -25,12 +26,22 @@ export default function Dashboard() {
     loadTemplates()
   }, [user, navigate, loadResumes, loadTemplates])
 
-  const handleCreateResume = () => {
+  const handleCreateResume = async () => {
     if (!user) return
-    
-    const newResume = createNewResume(user.id)
-    setCurrentResume(newResume)
-    navigate('/resume-builder')
+
+    // 1. Create the new resume object (without id)
+    const newResumeData = createNewResume(user.id)
+
+    // 2. Save the new resume to the backend to get a full Resume object
+    try {
+      const savedResume = await useResumeStore.getState().saveResume({
+        ...newResumeData,
+      } as any) // Type assertion for backend compatibility
+      setCurrentResume(savedResume)
+      navigate('/resume-builder')
+    } catch (error) {
+      console.error('Failed to create new resume:', error)
+    }
   }
 
   const handleEditResume = (resumeId: string) => {
@@ -109,62 +120,64 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-16">
+      <div className="hidden md:block"><BackButton /></div>
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
+        {/* Header Row */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6 md:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
               Welcome back, {user.email?.split('@')[0]}!
             </h1>
-            <p className="text-gray-600 dark:text-gray-300 mt-2">
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mt-1 sm:mt-2">
               Manage your resumes and track your job application progress.
             </p>
           </div>
-          <Button onClick={handleCreateResume} className="flex items-center gap-2">
+          <Button onClick={handleCreateResume} className="flex items-center gap-2 w-full md:w-auto justify-center">
             <Plus className="h-4 w-4" />
-            Create New Resume
+            <span className="text-sm sm:text-base">Create New Resume</span>
           </Button>
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Resumes</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Total Resumes</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{resumes.length}</div>
+            <CardContent className="p-4 md:p-6">
+              <div className="text-xl sm:text-2xl font-bold">{resumes.length}</div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Templates Available</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Templates Available</CardTitle>
               <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{templates.length}</div>
+            <CardContent className="p-4 md:p-6">
+              <div className="text-xl sm:text-2xl font-bold">{templates.length}</div>
               <Link to="/templates" className="text-xs text-muted-foreground hover:text-primary">
                 Browse templates →
               </Link>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Downloads</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Total Downloads</CardTitle>
               <Download className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalDownloads}</div>
+            <CardContent className="p-4 md:p-6">
+              <div className="text-xl sm:text-2xl font-bold">{totalDownloads}</div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg. Completion</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium">Avg. Completion</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="p-4 md:p-6">
+              <div className="text-xl sm:text-2xl font-bold">
                 {resumes.length > 0 
                   ? Math.round(resumes.reduce((sum, resume) => sum + getCompletionScore(resume), 0) / resumes.length)
                   : 0}%
@@ -174,51 +187,51 @@ export default function Dashboard() {
         </div>
 
         {/* Resumes Grid */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold mb-4">Your Resumes</h2>
+        <div className="mb-6 md:mb-8">
+          <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">Your Resumes</h2>
           {resumes.length === 0 ? (
-            <Card className="text-center py-12">
-              <CardContent>
-                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            <Card className="text-center py-8 sm:py-12">
+              <CardContent className="p-4 md:p-6">
+                <FileText className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-1 sm:mb-2">
                   No resumes yet
                 </h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-4">
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-3 sm:mb-4">
                   Get started by creating your first resume with our AI-powered builder.
                 </p>
-                <Button onClick={handleCreateResume}>
+                <Button onClick={handleCreateResume} className="w-full sm:w-auto justify-center">
                   <Plus className="h-4 w-4 mr-2" />
-                  Create Your First Resume
+                  <span className="text-sm sm:text-base">Create Your First Resume</span>
                 </Button>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {resumes.map((resume) => {
                 const templateInfo = getTemplateInfo(resume.template_id)
                 const completionScore = getCompletionScore(resume)
                 return (
                   <Card key={resume.id} className="hover:shadow-lg transition-shadow">
-                    <CardHeader>
+                    <CardHeader className="p-4 md:p-6">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <CardTitle className="text-lg">{resume.title}</CardTitle>
-                          <CardDescription className="mt-1">
+                          <CardTitle className="text-base sm:text-lg">{resume.title}</CardTitle>
+                          <CardDescription className="mt-1 text-xs sm:text-sm">
                             Last updated: {new Date(resume.updated_at).toLocaleDateString()}
                           </CardDescription>
                         </div>
                         {templateInfo && (
-                          <Badge variant="outline" className="ml-2">
+                          <Badge variant="outline" className="ml-2 px-2 py-0.5 text-xs sm:text-sm">
                             {templateInfo.name}
                           </Badge>
                         )}
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
+                    <CardContent className="p-4 md:p-6">
+                      <div className="space-y-3 sm:space-y-4">
                         {/* Completion Progress */}
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
+                        <div className="space-y-1 sm:space-y-2">
+                          <div className="flex justify-between text-xs sm:text-sm">
                             <span className="text-muted-foreground">Completion</span>
                             <span className="font-medium">{completionScore}%</span>
                           </div>
@@ -226,7 +239,7 @@ export default function Dashboard() {
                         </div>
 
                         {/* Resume Stats */}
-                        <div className="flex justify-between text-sm text-muted-foreground">
+                        <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
                           <span>Experience: {resume.experience?.length || 0}</span>
                           <span>Skills: {resume.skills?.length || 0}</span>
                           <span>Downloads: {resume.download_count || 0}</span>
@@ -238,6 +251,7 @@ export default function Dashboard() {
                             <Button
                               size="sm"
                               variant="outline"
+                              className="px-2 py-1 text-xs sm:text-sm"
                               onClick={() => handleEditResume(resume.id)}
                             >
                               <Edit className="h-4 w-4" />
@@ -245,6 +259,7 @@ export default function Dashboard() {
                             <Button
                               size="sm"
                               variant="outline"
+                              className="px-2 py-1 text-xs sm:text-sm"
                               onClick={() => handleDeleteResume(resume.id)}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -252,6 +267,7 @@ export default function Dashboard() {
                           </div>
                           <Button 
                             size="sm"
+                            className="px-2 py-1 text-xs sm:text-sm"
                             onClick={() => handleDownloadResume(resume)}
                           >
                             <Download className="h-4 w-4 mr-2" />
@@ -268,43 +284,41 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
             <Link to="/templates">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+              <CardHeader className="p-4 md:p-6">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                   <Eye className="h-5 w-5" />
                   Browse Templates
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs sm:text-sm">
                   Explore our collection of {templates.length} professional resume templates
                 </CardDescription>
               </CardHeader>
             </Link>
           </Card>
-          
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
             <Link to="/interview-prep">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+              <CardHeader className="p-4 md:p-6">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                   <Award className="h-5 w-5" />
                   Interview Preparation
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs sm:text-sm">
                   Practice with AI-powered interview questions and get feedback
                 </CardDescription>
               </CardHeader>
             </Link>
           </Card>
-          
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
             <Link to="/subscription">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+              <CardHeader className="p-4 md:p-6">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                   <Plus className="h-5 w-5" />
                   Upgrade to Premium
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs sm:text-sm">
                   Unlock advanced features and unlimited resume downloads
                 </CardDescription>
               </CardHeader>

@@ -3,6 +3,7 @@ import { Check, Crown, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import BackButton from '@/components/ui/BackButton'
 
 const plans = [
   {
@@ -81,6 +82,7 @@ export default function Subscription() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
+      <BackButton />
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">

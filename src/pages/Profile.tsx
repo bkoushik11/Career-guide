@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuthStore } from '@/store/authStore'
 import { User, Settings, CreditCard, Bell } from 'lucide-react'
+import BackButton from '@/components/ui/BackButton'
 
 const profileSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -57,6 +58,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
+      <BackButton />
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">

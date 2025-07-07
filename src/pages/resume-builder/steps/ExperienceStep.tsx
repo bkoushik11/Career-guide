@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,9 +7,12 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useResumeStore } from '@/store/resumeStore'
 import { Plus, Trash2, Sparkles } from 'lucide-react'
+import { generateGeminiText } from '@/lib/gemini'
 
 export default function ExperienceStep() {
   const { currentResume, updateCurrentResume } = useResumeStore()
+  const [loadingStates, setLoadingStates] = useState<{ [key: number]: boolean }>({})
+  const [errorStates, setErrorStates] = useState<{ [key: number]: string | null }>({})
   
   const { control, register, setValue } = useForm({
     defaultValues: {
@@ -42,10 +45,40 @@ export default function ExperienceStep() {
   }
 
   const handleAISuggest = async (index: number) => {
-    // TODO: Implement AI suggestions for job descriptions
-    const aiSuggestion = "• Led development of key features that increased user engagement by 25%\n• Collaborated with cross-functional teams to deliver projects on time and within budget\n• Implemented best practices for code quality and testing, reducing bugs by 40%"
+    const currentDescription = watchedExperience?.[index]?.description || ''
     
-    setValue(`experience.${index}.description`, aiSuggestion)
+    if (!currentDescription.trim()) {
+      setErrorStates(prev => ({ ...prev, [index]: 'Please write a description first before using AI enhance.' }))
+      return
+    }
+
+    setLoadingStates(prev => ({ ...prev, [index]: true }))
+    setErrorStates(prev => ({ ...prev, [index]: null }))
+
+    try {
+      const experience = watchedExperience?.[index]
+      const prompt = `Enhance this job description into 2-3 concise, professional bullet points for a resume:
+
+Job Title: ${experience?.position || 'N/A'}
+Company: ${experience?.company || 'N/A'}
+Current Description: ${currentDescription}
+
+Please create 2-3 bullet points that:
+1. Use professional, action-oriented language
+2. Include quantifiable achievements where possible (numbers, percentages, metrics)
+3. Highlight key responsibilities and impact
+4. Focus on the most important achievements and contributions
+5. Keep each bullet point concise but impactful
+
+Format as bullet points (•) and return only the enhanced description without any additional text.`
+
+      const enhancedDescription = await generateGeminiText(prompt)
+      setValue(`experience.${index}.description`, enhancedDescription)
+    } catch (err: any) {
+      setErrorStates(prev => ({ ...prev, [index]: err.message || 'Error enhancing description' }))
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [index]: false }))
+    }
   }
 
   return (
@@ -79,9 +112,10 @@ export default function ExperienceStep() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleAISuggest(index)}
+                    disabled={loadingStates[index] || !watchedExperience?.[index]?.description?.trim()}
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
-                    AI Suggest
+                    {loadingStates[index] ? 'Enhancing...' : 'AI Enhance'}
                   </Button>
                   <Button
                     variant="outline"
@@ -144,6 +178,14 @@ export default function ExperienceStep() {
                     className="min-h-[120px]"
                     {...register(`experience.${index}.description`)}
                   />
+                  {errorStates[index] && (
+                    <p className="text-sm text-red-600">{errorStates[index]}</p>
+                  )}
+                  {watchedExperience?.[index]?.description?.trim() && (
+                    <p className="text-sm text-blue-600">
+                      💡 Write your description above, then click "AI Enhance" to improve it
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

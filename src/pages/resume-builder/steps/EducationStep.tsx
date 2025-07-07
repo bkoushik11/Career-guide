@@ -41,6 +41,29 @@ export default function EducationStep() {
     })
   }
 
+  // Validation function to check if education step is complete
+  const isEducationStepComplete = () => {
+    if (!watchedEducation || watchedEducation.length === 0) {
+      return false
+    }
+
+    // Check if at least one education entry has all required fields
+    return watchedEducation.some(education => 
+      education.institution && 
+      education.institution.trim() !== '' &&
+      education.degree && 
+      education.degree.trim() !== '' &&
+      education.field && 
+      education.field.trim() !== ''
+    )
+  }
+
+  // Expose validation function to parent component
+  React.useEffect(() => {
+    // @ts-ignore - Adding custom property to window for parent access
+    window.isEducationStepComplete = isEducationStepComplete
+  }, [watchedEducation])
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -78,27 +101,30 @@ export default function EducationStep() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor={`institution-${index}`}>Institution</Label>
+                    <Label htmlFor={`institution-${index}`}>Institution *</Label>
                     <Input
                       id={`institution-${index}`}
                       placeholder="University Name"
                       {...register(`education.${index}.institution`)}
+                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor={`degree-${index}`}>Degree</Label>
+                    <Label htmlFor={`degree-${index}`}>Degree *</Label>
                     <Input
                       id={`degree-${index}`}
                       placeholder="Bachelor's, Master's, etc."
                       {...register(`education.${index}.degree`)}
+                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor={`field-${index}`}>Field of Study</Label>
+                    <Label htmlFor={`field-${index}`}>Field of Study *</Label>
                     <Input
                       id={`field-${index}`}
                       placeholder="Computer Science, Business, etc."
                       {...register(`education.${index}.field`)}
+                      required
                     />
                   </div>
                   <div className="space-y-2">

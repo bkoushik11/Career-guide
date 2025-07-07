@@ -58,27 +58,3 @@ You should:
   }
 }
 
-export async function endInterviewSession(conversationId: string): Promise<void> {
-  const apiKey = import.meta.env.VITE_TAVUS_API_KEY;
-  if (!apiKey) {
-    throw new Error('Tavus API key is missing in .env file.');
-  }
-
-  try {
-    const response = await fetch(`https://tavusapi.com/v2/conversations/${conversationId}/end`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Failed to end interview session: ${response.status} ${response.statusText}. ${errorData}`);
-    }
-  } catch (error) {
-    console.error('Error ending Tavus interview session:', error);
-    throw error;
-  }
-}

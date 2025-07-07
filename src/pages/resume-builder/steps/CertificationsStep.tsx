@@ -41,7 +41,7 @@ export default function CertificationsStep() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0 mb-2">
         <div>
           <h2 className="text-2xl font-semibold flex items-center gap-2">
             <Award className="h-6 w-6" />
@@ -51,7 +51,7 @@ export default function CertificationsStep() {
             Add your professional certifications and licenses
           </p>
         </div>
-        <Button onClick={addCertification}>
+        <Button onClick={addCertification} className="w-full md:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Add Certification
         </Button>

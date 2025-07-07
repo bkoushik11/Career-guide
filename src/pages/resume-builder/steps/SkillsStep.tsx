@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { useResumeStore } from '@/store/resumeStore'
-import { Plus, X, Sparkles } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 
 export default function SkillsStep() {
   const { currentResume, updateCurrentResume } = useResumeStore()
@@ -32,25 +32,10 @@ export default function SkillsStep() {
     }
   }
 
-  const handleAISuggest = async () => {
-    // TODO: Implement AI suggestions based on experience and projects
-    const aiSuggestions = [
-      'JavaScript', 'React', 'Node.js', 'Python', 'SQL', 'Git', 
-      'AWS', 'Docker', 'TypeScript', 'MongoDB'
-    ]
-    
-    const newSkills = [...new Set([...skills, ...aiSuggestions])]
-    updateCurrentResume({ skills: newSkills })
-  }
-
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div>
         <h2 className="text-2xl font-semibold">Skills</h2>
-        <Button variant="outline" onClick={handleAISuggest}>
-          <Sparkles className="h-4 w-4 mr-2" />
-          AI Suggest
-        </Button>
       </div>
 
       <div className="space-y-4">

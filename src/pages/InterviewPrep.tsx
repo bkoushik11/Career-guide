@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-// import { Progress } from '@/components/ui/progress'
-import { Badge } from '@/components/ui/badge'
-// import { Video, Play, Pause, RotateCcw, ArrowRight, ArrowLeft, Lightbulb, MessageSquare, Mic, Send } from 'lucide-react'
 import InterviewControls from '@/components/interview/InterviewControls'
 import FeedbackChat from '@/components/interview/FeedbackChat'
+import BackButton from '@/components/ui/BackButton'
+import SuggestionsTips from '@/components/interview/SuggestionsTips'
+import QuestionCard from '@/components/interview/QuestionCard'
+import { generateGeminiText } from '@/lib/gemini'
 
 interface InterviewQuestion {
   id: string
@@ -39,17 +40,88 @@ const mockQuestions: InterviewQuestion[] = [
   }
 ]
 
+const aiCache = new Map<string, { suggestions: string[]; tips: string[] }>()
+
 export default function InterviewPrep() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [answer, setAnswer] = useState('')
   const [feedback, setFeedback] = useState<AIFeedback | null>(null)
-  const [loading, setLoading] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
   const [isInterviewStarted, setIsInterviewStarted] = useState(false)
   const [showAnswer, setShowAnswer] = useState(false)
+  const [selectedRole, setSelectedRole] = useState<string>("")
+
+  // Gemini AI states
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([])
+  const [aiTips, setAiTips] = useState<string[]>([])
+  const [loadingAI, setLoadingAI] = useState(false)
+  const [aiError, setAiError] = useState<string>("")
+
+  const nextClickCount = useRef(0)
 
   const currentQuestion = mockQuestions[currentQuestionIndex]
-  const progress = ((currentQuestionIndex + 1) / mockQuestions.length) * 100
+
+  // Helper to get cache key
+  const getCacheKey = () =>
+    `${selectedRole}|${currentQuestionIndex}|${currentQuestion.id}`
+
+  // Fetch AI suggestions/tips with caching and latency reduction
+  const fetchAISuggestionsAndTips = async () => {
+    if (!selectedRole) return
+    setLoadingAI(true)
+    setAiError("")
+    const cacheKey = getCacheKey()
+    if (aiCache.has(cacheKey)) {
+      const cached = aiCache.get(cacheKey)!
+      setAiSuggestions(cached.suggestions)
+      setAiTips(cached.tips)
+      setLoadingAI(false)
+      return
+    }
+    try {
+      // Role-specific, short, emoji, dot-pointed, easy-to-read prompt
+      const suggestionsPrompt = `For the role of ${selectedRole.replace('_', ' ')}, give 3 short, simple suggestions for answering a common interview question. Each suggestion should:
+- Start with a dot (•)
+- End with a relevant emoji
+- End with a dot
+- Be a single sentence under 15 words
+Return as a plain list, no markdown, no asterisks, no numbers, each on a new line.`
+      const tipsPrompt = `For the role of ${selectedRole.replace('_', ' ')}, give 3 short, simple tips for answering a common interview question. Each tip should:
+- Start with a dot (•)
+- End with a relevant emoji
+- End with a dot
+- Be a single sentence under 15 words
+Return as a plain list, no markdown, no asterisks, no numbers, each on a new line.`
+      const [suggestionsText, tipsText] = await Promise.all([
+        generateGeminiText(suggestionsPrompt),
+        generateGeminiText(tipsPrompt),
+      ])
+      const suggestions = suggestionsText
+        .split(/\n+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+      const tips = tipsText
+        .split(/\n+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+      aiCache.set(cacheKey, { suggestions, tips })
+      setAiSuggestions(suggestions)
+      setAiTips(tips)
+    } catch (err) {
+      setAiError(
+        "Failed to fetch AI suggestions & tips. Please check your Gemini API key and network connection."
+      )
+      setAiSuggestions([])
+      setAiTips([])
+    } finally {
+      setLoadingAI(false)
+    }
+  }
+
+  // Fetch on role/question change
+  useEffect(() => {
+    fetchAISuggestionsAndTips()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRole, currentQuestionIndex])
 
   const handleStartInterview = () => {
     setIsInterviewStarted(true)
@@ -57,67 +129,34 @@ export default function InterviewPrep() {
     console.log('Starting interview session...')
   }
 
-  const handleSubmitAnswer = async () => {
-    if (!answer.trim()) return
-
-    setLoading(true)
-    
-    // Simulate API call for AI feedback
-    setTimeout(() => {
-      const mockFeedback: AIFeedback = {
-        clarity_score: Math.floor(Math.random() * 30) + 70,
-        confidence_score: Math.floor(Math.random() * 30) + 70,
-        relevance_score: Math.floor(Math.random() * 30) + 70,
-        suggestions: [
-          'Great use of specific examples! Consider adding more quantifiable results.',
-          'Your answer shows good structure. Try to be more concise in the opening.',
-          'Excellent connection to the role requirements. Add more personal reflection.',
-          'Strong technical details. Consider explaining the business impact more clearly.'
-        ],
-        overall_feedback: 'Your answer demonstrates good understanding of the question and provides relevant examples. Focus on being more concise and adding quantifiable results to make your response even stronger.'
-      }
-      
-      setFeedback(mockFeedback)
-      setShowFeedback(true)
-      setLoading(false)
-    }, 2000)
-  }
-
-  const handleNextQuestion = () => {
-    if (currentQuestionIndex < mockQuestions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1)
-      setAnswer('')
-      setFeedback(null)
-      setShowFeedback(false)
-    }
-  }
-
-  const handlePreviousQuestion = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1)
-      setAnswer('')
-      setFeedback(null)
-      setShowFeedback(false)
-    }
-  }
-
   const handleRetry = () => {
-    setAnswer('')
     setFeedback(null)
     setShowFeedback(false)
   }
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Easy': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-      case 'Medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-      case 'Hard': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+  // Navigation logic with guard
+  const handleNext = () => {
+    nextClickCount.current += 1
+    if (currentQuestionIndex < mockQuestions.length - 1) {
+      setCurrentQuestionIndex((i) => i + 1)
+      setShowAnswer(false)
+    }
+    // Prevent going out of bounds
+    else {
+      setCurrentQuestionIndex(mockQuestions.length - 1)
+    }
+  }
+
+  const handlePrevious = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex((i) => i - 1)
+      setShowAnswer(false)
     }
   }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
+      <div className="hidden md:block"><BackButton /></div>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -136,14 +175,21 @@ export default function InterviewPrep() {
             <select
               id="role-select"
               className="border rounded px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              // You can add value/onChange here if you want to handle role selection in state
+              value={selectedRole}
+              onChange={e => { setSelectedRole(e.target.value); setCurrentQuestionIndex(0); }}
             >
+              <option value="">-- Select --</option>
               <option value="hr">HR</option>
               <option value="software_engineer">Software Engineer</option>
               <option value="data_analyst">Data Analyst</option>
               <option value="ai_engineer">AI Engineer</option>
             </select>
           </div>
+          {selectedRole && selectedRole !== "hr" && (
+            <div className="mt-2 text-blue-700 dark:text-blue-300 text-sm font-medium">
+              Role-specific questions and features integrating soon.
+            </div>
+          )}
           <hr className="my-4 border-gray-300 dark:border-gray-700" />
         </div>
 
@@ -158,37 +204,24 @@ export default function InterviewPrep() {
             />
 
             {/* Current Question */}
-            <Card>
-              <CardHeader>
-                <CardTitle
-                  className="text-xl cursor-pointer hover:text-blue-600"
-                  onClick={() => setShowAnswer((prev) => !prev)}
-                >
-                  {currentQuestion.question_text}
-                </CardTitle>
-              </CardHeader>
-              {showAnswer && (
-                <CardContent>
-                  <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <p className="text-blue-800 dark:text-blue-200 mt-1">
-                      {currentQuestion.answer}
-                    </p>
-                  </div>
-                </CardContent>
-              )}
-            </Card>
+            <QuestionCard
+              question={currentQuestion.question_text}
+              answer={currentQuestion.answer}
+              showAnswer={showAnswer}
+              onToggleAnswer={() => setShowAnswer((prev) => !prev)}
+            />
 
             <div className="flex gap-4 mt-4">
               <Button
                 variant="outline"
-                onClick={() => { setCurrentQuestionIndex((i) => Math.max(i - 1, 0)); setShowAnswer(false); }}
+                onClick={handlePrevious}
                 disabled={currentQuestionIndex === 0}
               >
                 Previous
               </Button>
               <Button
                 variant="outline"
-                onClick={() => { setCurrentQuestionIndex((i) => Math.min(i + 1, mockQuestions.length - 1)); setShowAnswer(false); }}
+                onClick={handleNext}
                 disabled={currentQuestionIndex === mockQuestions.length - 1}
               >
                 Next
@@ -198,71 +231,24 @@ export default function InterviewPrep() {
 
           {/* Right Column */}
           <div className="space-y-6">
-            {/* AI Suggestions Section */}
-            <div className="p-4 bg-yellow-50 dark:bg-yellow-900 rounded-lg border border-yellow-200 dark:border-yellow-800">
-              <h3 className="font-semibold text-yellow-800 dark:text-yellow-100 mb-2">AI Suggestions</h3>
-              <ul className="list-disc pl-5 text-yellow-900 dark:text-yellow-100 text-sm space-y-1">
-                {currentQuestion.id === '1' && (
-                  <>
-                    <li>Keep your answer concise and relevant to the job.</li>
-                    <li>Highlight your most impressive achievements.</li>
-                    <li>Show enthusiasm for the position.</li>
-                  </>
-                )}
-                {currentQuestion.id === '2' && (
-                  <>
-                    <li>Describe the challenge clearly and your specific role.</li>
-                    <li>Emphasize problem-solving and teamwork.</li>
-                    <li>Quantify your results if possible.</li>
-                  </>
-                )}
-                {currentQuestion.id === '3' && (
-                  <>
-                    <li>Align your goals with the company's vision.</li>
-                    <li>Show ambition but remain realistic.</li>
-                    <li>Mention skills you want to develop.</li>
-                  </>
-                )}
-              </ul>
-            </div>
-            {/* Tips Section */}
-            <div className="p-4 bg-blue-50 dark:bg-blue-900 rounded-lg border border-blue-200 dark:border-blue-800">
-              <h3 className="font-semibold text-blue-800 dark:text-blue-100 mb-2">Tips</h3>
-              <ul className="list-disc pl-5 text-blue-900 dark:text-blue-100 text-sm space-y-1">
-                {currentQuestion.id === '1' && (
-                  <>
-                    <li>Structure your answer chronologically or by themes.</li>
-                    <li>End with why you're interested in this specific position.</li>
-                  </>
-                )}
-                {currentQuestion.id === '2' && (
-                  <>
-                    <li>Use the STAR method (Situation, Task, Action, Result).</li>
-                    <li>Choose a project that demonstrates relevant skills.</li>
-                    <li>Focus on your specific contributions and decisions.</li>
-                  </>
-                )}
-                {currentQuestion.id === '3' && (
-                  <>
-                    <li>Demonstrate that you've thought about your career path.</li>
-                    <li>Mention skills you want to develop that benefit both you and the company.</li>
-                  </>
-                )}
-              </ul>
-            </div>
+            <SuggestionsTips
+              suggestions={aiSuggestions}
+              tips={aiTips}
+              loading={loadingAI}
+              error={aiError}
+              onRefresh={fetchAISuggestionsAndTips}
+            />
             {/* Feedback Chat if needed */}
             {showFeedback && (
               <FeedbackChat
                 feedback={feedback}
                 onRetry={handleRetry}
-                onNext={handleNextQuestion}
-                canGoNext={currentQuestionIndex < mockQuestions.length - 1}
+                onNext={() => {}}
+                canGoNext={false}
               />
             )}
           </div>
         </div>
-
-        {/* Navigation Controls removed as requested */}
       </div>
     </div>
   )

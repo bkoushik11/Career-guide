@@ -17,7 +17,15 @@ import CoverLetterGenerator from './pages/CoverLetterGenerator'
 import ATSOptimization from './pages/ATSOptimization'
 
 function App() {
-  const [isDark, setIsDark] = useState(false)
+  const [isDark, setIsDark] = useState(() => {
+    // Check localStorage first
+    const savedTheme = localStorage.getItem('theme')
+    if (savedTheme) {
+      return savedTheme === 'dark'
+    }
+    // Check system preference
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  })
   const { user, setUser, setLoading } = useAuthStore()
 
   useEffect(() => {
@@ -38,14 +46,38 @@ function App() {
     return () => subscription.unsubscribe()
   }, [setUser, setLoading])
 
+  // Apply theme to document
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+    }
+  }, [isDark])
+
+  // Listen for system theme changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleChange = (e: MediaQueryListEvent) => {
+      // Only update if user hasn't manually set a preference
+      if (!localStorage.getItem('theme')) {
+        setIsDark(e.matches)
+      }
+    }
+
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
+
   const toggleTheme = () => {
     setIsDark(!isDark)
-    document.documentElement.classList.toggle('dark')
   }
 
   return (
     <Router>
-      <div className={`min-h-screen ${isDark ? 'dark' : ''}`}>
+      <div className="min-h-screen bg-background text-foreground">
         <Navbar isDark={isDark} toggleTheme={toggleTheme} />
         
         <Routes>

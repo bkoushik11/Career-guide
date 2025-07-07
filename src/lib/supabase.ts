@@ -49,18 +49,22 @@ export const supabase = isConfigured
 
 // Test the connection only if properly configured
 if (isConfigured) {
-  supabase.from('resumes').select('count', { count: 'exact', head: true }).then(
-    () => {
-      console.log('✅ Supabase connection successful')
+  (async () => {
+    try {
+      const { error } = await supabase.from('resumes').select('count', { count: 'exact', head: true })
+      if (error) {
+        throw error
+      }
+      // Removed: console.log('✅ Supabase connection successful')
+    } catch (error: any) {
+      console.error('❌ Supabase connection failed:', error?.message)
+      console.error('Please check:')
+      console.error('1. Your VITE_SUPABASE_URL is correct:', supabaseUrl)
+      console.error('2. Your VITE_SUPABASE_ANON_KEY is valid')
+      console.error('3. Your Supabase project is active and accessible')
+      console.error('4. Row Level Security policies are properly configured')
     }
-  ).catch((error) => {
-    console.error('❌ Supabase connection failed:', error.message)
-    console.error('Please check:')
-    console.error('1. Your VITE_SUPABASE_URL is correct:', supabaseUrl)
-    console.error('2. Your VITE_SUPABASE_ANON_KEY is valid')
-    console.error('3. Your Supabase project is active and accessible')
-    console.error('4. Row Level Security policies are properly configured')
-  })
+  })()
 }
 
 // Export a flag to check if Supabase is configured

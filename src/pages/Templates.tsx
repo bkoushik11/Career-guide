@@ -3,11 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog'
 import { Eye, Star, Download, Crown, Palette } from 'lucide-react'
 import { useResumeStore, createNewResume } from '@/store/resumeStore'
 import { useAuthStore } from '@/store/authStore'
 import ResumePreview from './resume-builder/ResumePreview'
+import BackButton from '@/components/ui/BackButton'
 
 export default function Templates() {
   const [selectedCategory, setSelectedCategory] = useState('All')
@@ -91,6 +92,7 @@ export default function Templates() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
+      <BackButton />
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
@@ -142,6 +144,7 @@ export default function Templates() {
                     <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>{template.name} Preview</DialogTitle>
+                        <DialogDescription>Preview of the selected resume template.</DialogDescription>
                       </DialogHeader>
                       <div className="mt-4">
                         <ResumePreview 
