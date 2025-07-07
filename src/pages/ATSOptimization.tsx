@@ -8,6 +8,7 @@ import mammoth from "mammoth";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
 // @ts-ignore
 import "pdfjs-dist/legacy/build/pdf.worker";
+import BackButton from '@/components/ui/BackButton';
 
 const ATSOptimization: React.FC = () => {
   const [resume, setResume] = useState<File | null>(null);
@@ -85,7 +86,9 @@ const ATSOptimization: React.FC = () => {
         throw new Error("Unsupported file type.");
       }
 
-      const prompt = `You are an ATS (Applicant Tracking System) expert. Analyze the following resume and job description.
+      const prompt = `You are an advanced Applicant Tracking System (ATS) and resume optimization expert.
+
+Analyze the following candidate resume and job description.
 
 Resume:
 ${resumeText}
@@ -93,14 +96,26 @@ ${resumeText}
 Job Description:
 ${jobDescription}
 
-Give an ATS match score (0-100) for how well the resume matches the job description.
-Then, provide 3-5 specific tips to improve the resume for a higher ATS score.
+Your tasks:
+1. Carefully compare the resume to the job description.
+2. Identify relevant keywords, skills, qualifications, and experience required for the job.
+3. Evaluate how well the resume matches these requirements.
+4. Consider aspects such as keyword presence, skills alignment, experience relevance, formatting, and overall clarity.
+5. Identify any significant gaps or missing elements in the resume compared to the job description.
 
-Respond in JSON format:
+Provide your response in the following JSON format:
 {
-  "score": number,
-  "tips": [string, string, ...]
-}`;
+  "score": number, // An integer from 0 to 100 indicating the overall ATS match quality.
+  "summary": "A concise, 2-3 sentence summary of the resume's strengths and weaknesses in relation to the job description.",
+  "tips": [
+    "Tip 1: Be specific and actionable.",
+    "Tip 2: Focus on ATS best practices (e.g., keyword usage, formatting, quantifying achievements, etc.).",
+    "Tip 3: Address any missing skills, certifications, or experience.",
+    "Tip 4: Suggest improvements for clarity or structure.",
+    "Tip 5: Any other relevant advice."
+  ]
+}
+Only respond with valid JSON. Do not include any explanations outside the JSON block.`;
 
       const aiText = await generateGeminiText(prompt);
 
@@ -134,39 +149,40 @@ Respond in JSON format:
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-3xl font-bold mb-2 text-blue-600">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-16 md:pt-20 overflow-x-hidden">
+      <div className="hidden md:block"><BackButton /></div>
+      <div className="max-w-full md:max-w-7xl mx-auto px-2 md:px-4 py-6 md:py-8">
+        <div className="max-w-full md:max-w-3xl mx-auto">
+          <h1 className="text-2xl md:text-3xl font-bold mb-2 text-blue-600 dark:text-blue-400">
             ATS Optimization
           </h1>
-          <p className="text-gray-600 mb-6">
+          <p className="text-base md:text-lg text-gray-600 dark:text-gray-300 mb-4 md:mb-6">
             Ensure your resume passes Applicant Tracking Systems with our advanced analysis.
           </p>
 
-          <div className="bg-white p-6 rounded-lg shadow mb-6">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
-              <FaFileAlt className="text-blue-600" />
+          <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow mb-4 md:mb-6 border border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg md:text-xl font-semibold mb-2 md:mb-4 text-gray-800 dark:text-white flex items-center gap-2">
+              <FaFileAlt className="text-blue-600 dark:text-blue-400" />
               Upload Your Resume
             </h2>
-            <div className="flex items-center gap-2 mb-4">
-              <FaUpload className="text-blue-600" />
+            <div className="flex flex-col md:flex-row items-center gap-2 mb-2 md:mb-4">
+              <FaUpload className="text-blue-600 dark:text-blue-400" />
               <input
                 type="file"
                 accept=".pdf,.docx"
-                className="p-2 border rounded-lg w-full text-gray-700"
+                className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg w-full text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 onChange={handleResumeChange}
                 disabled={loading}
               />
             </div>
 
-            <h2 className="text-xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
-              <FaFileAlt className="text-blue-600" />
+            <h2 className="text-lg md:text-xl font-semibold mb-2 md:mb-4 text-gray-800 dark:text-white flex items-center gap-2">
+              <FaFileAlt className="text-blue-600 dark:text-blue-400" />
               Enter Job Description
             </h2>
             <textarea
               placeholder="Paste the job description here..."
-              className="w-full p-2 border rounded-lg mb-4 text-gray-700"
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg mb-2 md:mb-4 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               rows={6}
               value={jobDescription}
               onChange={handleJobDescriptionChange}
@@ -175,29 +191,29 @@ Respond in JSON format:
 
             <button
               className={`p-3 w-full rounded-lg text-white ${
-                loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
-              }`}
+                loading ? "bg-blue-400 dark:bg-blue-500" : "bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600"
+              } transition-colors text-base md:text-lg`}
               onClick={handleAnalyze}
               disabled={loading}
             >
               {loading ? <ClipLoader color="#fff" size={20} /> : "Analyze"}
             </button>
 
-            {error && <p className="text-red-500 mt-2 text-sm">{error}</p>}
+            {error && <p className="text-red-500 dark:text-red-400 mt-2 text-sm">{error}</p>}
           </div>
 
           {score !== null && (
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow border border-gray-200 dark:border-gray-700 mt-4 md:mt-6">
+              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">
                 Analysis Results
               </h2>
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-24 h-24 flex items-center justify-center bg-blue-100 text-blue-600 font-bold rounded-full text-2xl shadow-sm">
+                <div className="w-24 h-24 flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 font-bold rounded-full text-2xl shadow-sm">
                   {score}%
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-800">ATS Score</p>
-                  <p className="text-gray-600 text-sm">
+                  <p className="font-semibold text-gray-800 dark:text-white">ATS Score</p>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm">
                     How well your resume aligns with the job description.
                   </p>
                 </div>
@@ -205,10 +221,10 @@ Respond in JSON format:
 
               {tips.length > 0 && (
                 <>
-                  <h3 className="text-lg font-semibold mb-2 text-gray-800">
+                  <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">
                     Tips to Improve Your Score
                   </h3>
-                  <ul className="list-disc pl-6 text-gray-700 space-y-1">
+                  <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-1">
                     {tips.map((tip, index) => (
                       <li key={index}>{tip}</li>
                     ))}
